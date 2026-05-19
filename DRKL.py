@@ -1,12 +1,14 @@
 import torch
 import torch.nn.functional as F
 
-def drkl_loss(logits_mlp, logits_gnn, alpha, beta, temperature):
+def drkl_loss(logits_mlp, logits_gnn, alpha, beta, temperature=1.0):
 
-    loss_CFT = F.cross_entropy(logits_gnn, logits_mlp)
-    loss_RT = F.cross_entropy(logits_mlp, logits_mlp)
-
-    loss = alpha*loss_CFT - beta*loss_RT
-
+    l_gnn = logits_gnn / temperature
+    l_mlp = logits_mlp / temperature
+    
+    Q_mlp = F.softmax(l_mlp, dim=-1)
+    
+    loss = (alpha * F.cross_entropy(l_gnn, Q_mlp, reduction='mean') -
+            beta  * F.cross_entropy(l_mlp, Q_mlp, reduction='mean')) * (temperature ** 2)
+    
     return loss
-
